@@ -5,7 +5,7 @@ extern const wchar_t* cache2 = L"";
 
 extern const char* c1 = "";
 extern const char* c2 = "";
-extern const char* p1 = "start udp.py -ip ";
+extern const char* p1 = "start udp.exe -ip ";
 extern const char* p2 = " -msg ";
 
 
@@ -15,14 +15,14 @@ extern const wchar_t* preprocessing2 = L" -msg ";
 
 extern const wchar_t* preprocessing3 = L" -ip ";
 
-extern const wchar_t* preprocessing4 = L" -c calc.exe ";    // ´ò¿ª¼ÆËãÆ÷
+extern const wchar_t* preprocessing4 = L" -c calc.exe ";    // æ‰“å¼€è®¡ç®—å™¨
 
-extern const wchar_t* preprocessing5 = L" -e s";            // ¹Ø»ú
+extern const wchar_t* preprocessing5 = L" -e s";            // å…³æœº
 
-extern const wchar_t* preprocessing6 = L" -e r";            // ÖØÆô
+extern const wchar_t* preprocessing6 = L" -e r";            // é‡å¯
 
-extern const wchar_t* preprocessing7 = L" -l 3 -t 10";      // ºäÕ¨
+extern const wchar_t* preprocessing7 = L" -l 3 -t 10";      // è½°ç‚¸
 
-extern const wchar_t* preprocessing8 = L" -e break";        // ÍÑÀë¿ØÖÆ
+extern const wchar_t* preprocessing8 = L" -e break";        // è„±ç¦»æ§åˆ¶
 
-extern const wchar_t* preprocessing9 = L" -e continue";     // »Ö¸´¿ØÖÆ
+extern const wchar_t* preprocessing9 = L" -e continue";     // æ¢å¤æ§åˆ¶

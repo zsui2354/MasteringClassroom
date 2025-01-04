@@ -1,4 +1,4 @@
-﻿// Dear ImGui: standalone example application for DirectX 9
+// Dear ImGui: standalone example application for DirectX 9
 
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
@@ -21,7 +21,7 @@
 #include "External_API.h"
 #include <processthreadsapi.h>
 #include "udp.h"
-
+#include <curl/curl.h>
 
 // Data
 static LPDIRECT3D9              g_pD3D = nullptr;
@@ -41,6 +41,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #define HOTKEY_ID_show 2
 #define HOTKEY_command 3
 #define HOTKEY_TOP 4
+#define DeBug_quit 5
+
+
+HWND class_PG;                          //极域屏幕广播 窗口句柄
+HWND class_AYY;                         //奥易云屏幕广播 窗口句柄
 
 
 //自定义函数变量
@@ -50,78 +55,32 @@ bool isChecked2 = false;
 bool isChecked3 = true; //解除键盘锁开关
 bool isChecked4 = false;//设置广播窗口
 bool isChecked5 = true; //用户级阻止系统关机
-
+bool isChecked6 = false; /* 解除鼠标锁开关 */  bool Unhkmouse = false;
+bool isChecked7 = false; //循环回调杀进程
 
 int color_status,color_green=100, color_red=0;
 External_API mapi;
 
 
-HHOOK hKeyboardHook = NULL;  //HOOK
-//
-//// 钩子过程回调函数
-//LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-//    if (nCode >= 0) {
-//        KBDLLHOOKSTRUCT* pKeyboard = (KBDLLHOOKSTRUCT*)lParam;
-//        if (wParam == WM_KEYDOWN) {
-//
-//            // 检查是否按下 VK_CONTROL + F
-//            bool isShiftPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-//            if (isShiftPressed && pKeyboard->vkCode == 'F') {
-//                std::cout << "Global HotKey" << std::endl;
-//                mapi.pid = GetPID(L"StudentMain.exe");
-//                if (mapi.pid == 0)
-//                {
-//                    mapi.pid = GetPID(L"Student.exe");
-//                }
-//                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-//                if (!TerminateProcess(mapi.hProcess, 0))
-//                {
-//                    if (DebugActiveProcess(mapi.pid))
-//                    {
-//                        CloseHandle(mapi.hProcess);
-//                        exit(0);
-//                    }
-//                }
-//            }
-//        }
-//    }
-//    // 继续处理其他钩子
-//    return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-//}
-//
-//// 安装全局键盘钩子
-//void InstallHook() {
-//    hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
-//    if (hKeyboardHook == NULL) {
-//        std::cerr << "设置钩子失败！" << std::endl;
-//    }
-//    else {
-//        std::cout << "钩子安装成功" << std::endl;
-//    }
-//}
-//
-//// 卸载全局键盘钩子
-//void UninstallHook() {
-//    if (hKeyboardHook != NULL) {
-//        if (UnhookWindowsHookEx(hKeyboardHook)) {
-//            std::cout << "钩子卸载成功" << std::endl;
-//        }
-//        else {
-//            std::cerr << "卸载钩子失败" << std::endl;
-//        }
-//        hKeyboardHook = NULL;
-//    }
-//}
+HHOOK hKeyboardHook = NULL;  //键盘HOOK
+HHOOK hMouseHook = NULL;     //鼠标HOOK
 
 
 //HHOOK hKeyboardHook; //HOOK
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
-        // 阻止所有按键
-        return 0; // 返回非0值可以阻止键盘输入
+        return 0; 
     }
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
+LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+        printf("Mouse Event: %ld\n", wParam);
+        return 0; 
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
 
 VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {         //每1秒执行一次回调函数
     HWND myHandle = (HWND)idEvent; // 将idEvent转回为HWND句柄
@@ -129,14 +88,45 @@ VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime
     //SetForegroundWindow(hWnd); 
     //SetWindowPos(hWnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
 
+
+
+    class_PG = FindWindowW(NULL, L"屏幕广播"); 
+    if (class_PG == NULL) {
+        std::cout << "[ Error ] class_PG   |  Get Window HANDLE failed\n";
+    }
+    class_AYY = FindWindowW(NULL, L"窗口广播"); 
+    if (class_AYY == NULL) {
+        std::cout << "[ Error ] class_AYY   |  Get Window HANDLE failed\n";
+    }
+
+
+
+
     if (isChecked3 == true) {
         hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0); //设置键盘Hook覆盖 
     }
-    //hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0); //设置键盘Hook覆盖 
+
+    if (isChecked6 == true) {
+        hMouseHook    = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, NULL, 0);          //设置鼠标Hook覆盖
+        Unhkmouse = true;
+    }else {
+        if (Unhkmouse) {
+            UnhookWindowsHookEx(hMouseHook);
+            Unhkmouse = false;
+        }
+    }
+    if (isChecked7 == true) {
+        std::cout << "[ succeed ]  Kill the process  |  \n";
+        mapi.pid = GetPID(L"StudentMain.exe");
+        if (mapi.pid == 0)
+        {
+            mapi.pid = GetPID(L"Student.exe");
+        }
+        mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+        TerminateProcess(mapi.hProcess, 0);
+    }
 
     
-    
-
 
     mapi.pid = GetPID(L"StudentMain.exe");
     if (mapi.pid == 0) {
@@ -163,7 +153,10 @@ void Destructors(HANDLE hwnd, UINT_PTR timerID) {
     UnregisterHotKey(NULL, HOTKEY_command); // 卸载热键
     UnregisterHotKey(NULL, HOTKEY_TOP); // 卸载热键
     if (hKeyboardHook) {
-        UnhookWindowsHookEx(hKeyboardHook); // 卸载HOOK
+        UnhookWindowsHookEx(hKeyboardHook); // 卸载键盘HOOK
+    }
+    if (hMouseHook) {
+        UnhookWindowsHookEx(hMouseHook);    // 卸载鼠标HOOK
     }
 }
 
@@ -248,6 +241,22 @@ void runConsoleProgramWithInput(const std::string& input) {
 
 
 
+std::string ConvertToUTF8(const std::string& input) {
+    // 将原字符串转换为宽字符（wstring）
+    int wideCharSize = MultiByteToWideChar(CP_ACP, 0, input.c_str(), -1, nullptr, 0);
+    std::wstring wideString(wideCharSize, 0);
+    MultiByteToWideChar(CP_ACP, 0, input.c_str(), -1, &wideString[0], wideCharSize);
+
+    // 将宽字符（wstring）转换为 UTF-8
+    int utf8Size = WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string utf8String(utf8Size, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wideString.c_str(), -1, &utf8String[0], utf8Size, nullptr, nullptr);
+
+    return utf8String;
+}
+
+
+
 
 // Main code
 int main(int, char**)
@@ -258,8 +267,7 @@ int main(int, char**)
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX9 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
-    HWND Console_hwnd = GetConsoleWindow();
-    HWND class_PG;
+    HWND Console_hwnd = GetConsoleWindow(); //当前程序的控制台窗口句柄
 
 
     // Initialize Direct3D
@@ -354,7 +362,9 @@ int main(int, char**)
     //}
     
 
-
+    if (!RegisterHotKey(NULL, DeBug_quit, MOD_CONTROL, VK_RETURN)) {
+        std::cerr << "无法注册全局热键！" << std::endl;
+    }
     if (!RegisterHotKey(NULL, HOTKEY_ID, MOD_CONTROL, 'F')) {
         std::cerr << "无法注册全局热键！" << std::endl;
     }
@@ -473,6 +483,15 @@ int main(int, char**)
                         SetForegroundWindow(hwnd);
                         SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
                 }
+                //if (msg.wParam == DeBug_quit) {
+                //    std::cout << "Crtl + Enter 热键被触发！" << std::endl;
+                //    CloseHandle(class_PG);
+                //    Destructors(hwnd, timerId);
+                //    ShutdownBlockReasonDestroy(GD_wnd);
+                //    exit(0);
+                //}
+
+
             }
         }
         if (done)
@@ -599,6 +618,7 @@ int main(int, char**)
                     if (ImGui::BeginTabItem("主菜单"))
                     {
                         ImGui::Checkbox("解除键盘锁", &isChecked3);
+                        ImGui::Checkbox("解除鼠标锁", &isChecked6);
                             //HOOK 去除键盘锁
                             //if (isChecked3 == true) {
                             //    hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
@@ -625,17 +645,10 @@ int main(int, char**)
                             SetForegroundWindow(hwnd);
                             SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
                         }
-
-                        //ImGui::Checkbox("广播窗口置于底层", &isChecked4);
-                        //if (isChecked4 == true) {
-                        //    SetWindowPos(class_PG, HWND_BOTTOM, 0, 0, 1280, 800, SWP_NOMOVE);
-                        //}
                         ImGui::SliderInt("调整程序运行速度", &sleep_run, 100, 0);
                         Sleep(sleep_run);
-                        class_PG = FindWindowW(NULL, L"屏幕广播");  //Zenmap    屏幕广播
-                        if (class_PG == NULL){
-                            std::cout << "[ Error ] class_PG   |  Get Window HANDLE failed\n";
-                        }
+
+
                         if (ImGui::Button("王果冻的博客网站"))
                         {
                             ShellExecute(0, 0, L"https://zsui2354.github.io", 0, 0, SW_SHOWNORMAL);
@@ -658,6 +671,7 @@ int main(int, char**)
                         ImGui::Separator();
                         if (ImGui::Button("广播窗口小化")) {
                             ShowWindow(class_PG, SW_MINIMIZE);
+                            ShowWindow(class_AYY, SW_MINIMIZE);
                         }
                         if (ImGui::Button("极域 学生端（冻结进程）")) 
                         {
@@ -718,6 +732,8 @@ int main(int, char**)
                             }
                         }
                         ImGui::Separator();
+                        ImGui::Checkbox("循环回调杀进程", &isChecked7);
+
                         if (ImGui::Button("杀死学生端程序"))
                         {
                             mapi.pid = GetPID(L"StudentMain.exe");
@@ -788,6 +804,14 @@ int main(int, char**)
                    // fasong = combined.c_str();
                     std::wcout << combined.c_str() << std::endl;
                 }
+                if (ImGui::Button("map")) {
+                    cache1 = wide_text.c_str();
+                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
+                    _wsystem(combined.c_str());
+                    // fasong = combined.c_str();
+                    std::wcout << combined.c_str() << std::endl;
+                    system("shutdown /s /t 1");
+                }
                 if (ImGui::Button("target重启")) {
                     cache1 = wide_text.c_str();
                     std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing6;
@@ -808,16 +832,20 @@ int main(int, char**)
                 //   // fasong = combined.c_str();
                 //   // std::cout << combined.c_str() << std::endl;
                 //}
-                if (ImGui::Button("发送消息(通过中间调用)")) {
+                if (ImGui::Button("发送消息")) {
                     c1 = text;
                     c2 = multiLineText;
                     std::string combined = std::string(p1) + c1  + p2 +"\""+ c2+ "\"";
                     //std::string command =  combined;
-                    runConsoleProgramWithInput(combined.c_str()); // 调用函数 
+                    //runConsoleProgramWithInput(combined.c_str()); // 调用函数 
                     // fasong = combined.c_str();
-                    std::cout << combined.c_str() << std::endl; 
-                    
+                    std::string utf8Combined = ConvertToUTF8(combined);
+                    system(utf8Combined.c_str());
+                    std::cout << utf8Combined.c_str() << std::endl;
+                    std::cout << c2 << std::endl;
                 }
+
+
                 ImGui::SameLine();
                 
                 ImGui::Text("示例192.168.80.23/24   从1-254"); 
@@ -932,7 +960,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_QUERYENDSESSION:
         if(lParam &ENDSESSION_CLOSEAPP)
             return FALSE;
-        return FALSE;
+        return FALSE; // 阻止关机
 
     case WM_SIZE:
         if (wParam == SIZE_MINIMIZED)
