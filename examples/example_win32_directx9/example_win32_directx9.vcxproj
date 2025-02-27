@@ -104,6 +104,7 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..;..\..\backends;%(AdditionalIncludeDirectories);$(DXSDK_DIR)Include;</AdditionalIncludeDirectories>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -161,6 +162,7 @@
     <ClCompile Include="..\..\backends\imgui_impl_dx9.cpp" />
     <ClCompile Include="..\..\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="addressOffset.cpp" />
+    <ClCompile Include="Console.cpp" />
     <ClCompile Include="External_API.cpp" />
     <ClCompile Include="lib_function.cpp" />
     <ClCompile Include="main.cpp" />
@@ -172,6 +174,7 @@
     <ClInclude Include="..\..\backends\imgui_impl_dx9.h" />
     <ClInclude Include="..\..\backends\imgui_impl_win32.h" />
     <ClInclude Include="addressOffset.h" />
+    <ClInclude Include="Console.h" />
     <ClInclude Include="External_API.h" />
     <ClInclude Include="lib_function.h" />
     <ClInclude Include="udp.h" />

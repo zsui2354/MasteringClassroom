@@ -6,6 +6,8 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
+#include <iostream>
+#include <string>
 #include "imgui.h"
 #include "imgui_impl_dx9.h"
 #include "imgui_impl_win32.h"
@@ -21,7 +23,10 @@
 #include "External_API.h"
 #include <processthreadsapi.h>
 #include "udp.h"
-#include <curl/curl.h>
+#include "Console.h"
+
+
+//#include <curl/curl.h>
 
 // Data
 static LPDIRECT3D9              g_pD3D = nullptr;
@@ -50,13 +55,14 @@ HWND class_AYY;                         //奥易云屏幕广播 窗口句柄
 
 //自定义函数变量
 std::string program_status = "";
-bool isChecked = false; //强制窗口置于顶层
+bool isChecked = false;             //强制窗口置于顶层
 bool isChecked2 = false;
-bool isChecked3 = true; //解除键盘锁开关
-bool isChecked4 = false;//设置广播窗口
-bool isChecked5 = true; //用户级阻止系统关机
-bool isChecked6 = false; /* 解除鼠标锁开关 */  bool Unhkmouse = false;
-bool isChecked7 = false; //循环回调杀进程
+bool isChecked3 = true;             //解除键盘锁开关
+bool isChecked4 = false;            //设置广播窗口
+bool isChecked5 = true;             //用户级阻止系统关机
+bool isChecked6 = false;            /* 解除鼠标锁开关 */  bool Unhkmouse = false;
+bool isChecked7 = false;            //循环回调杀进程
+bool isChecked_USB_STATUS = false;  //USB解除限制开关
 
 int color_status,color_green=100, color_red=0;
 External_API mapi;
@@ -66,6 +72,8 @@ HHOOK hKeyboardHook = NULL;  //键盘HOOK
 HHOOK hMouseHook = NULL;     //鼠标HOOK
 
 
+
+
 //HHOOK hKeyboardHook; //HOOK
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
@@ -73,6 +81,7 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     }
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
+//HHOOK hMouseHook; //HOOK
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
         printf("Mouse Event: %ld\n", wParam);
@@ -187,10 +196,12 @@ void SetupConsole() {
 
 
 
-#include <windows.h>
-#include <iostream>
-#include <string>
-#include <imgui.h>
+//#include <windows.h>
+//#include <iostream>
+//#include <string>
+//#include <imgui.h>
+
+
 
 void runConsoleProgramWithInput(const std::string& input) {
     HANDLE hReadPipe, hWritePipe;
@@ -352,6 +363,8 @@ int main(int, char**)
     bool Show_command = false;
 
 
+
+    
 
 
     //    //HOOK 去除键盘锁
@@ -537,13 +550,28 @@ int main(int, char**)
 
             ImGuiStyle* style = &ImGui::GetStyle();
 
-            style->Alpha = 1.0f;     
+            style->Alpha = 1.0f;
+            style->WindowRounding = 5.0f;
+            style->FrameRounding = 12.0f;
+            style->GrabRounding = 100.0f;
+            style->TabRounding = 9.0f;
+
+            style->SeparatorTextBorderSize = 3.0f;
+            style->SeparatorTextAlign = ImVec2(0.47f, 0.50f);
+            style->SeparatorTextPadding = ImVec2(40.0f,11.0f);
+            style->GrabMinSize = 15.0f;
+            style->ScrollbarSize = 14.0f;
+            style->WindowPadding = ImVec2(20.0f, 0.0f);
+            style->FramePadding = ImVec2(8.0f, 7.0f);
+            style->ItemSpacing = ImVec2(9.0f, 9.0f);
+            style->ItemInnerSpacing = ImVec2(14.0f, 9.0f);
+            
 
             // 主背景颜色和窗口背景颜色
 
-            style->WindowRounding = 10.0f; //窗口圆角
-            style->FrameRounding = 5.0f;   //设置按钮的圆角半径为 5
-            style->ChildRounding = 4.0f;   //子窗口圆角
+            //style->WindowRounding = 10.0f; //窗口圆角
+            //style->FrameRounding = 5.0f;   //设置按钮的圆角半径为 5
+            //style->ChildRounding = 4.0f;   //子窗口圆角
 
             style->Colors[ImGuiCol_WindowBg] = ImColor(36, 36, 48, 255);        // 深灰色背景
             style->Colors[ImGuiCol_ChildBg] = ImColor(36, 36, 48, 255);         // 子窗口背景颜色
@@ -617,8 +645,34 @@ int main(int, char**)
                 {
                     if (ImGui::BeginTabItem("主菜单"))
                     {
+                        ImVec2 content_avail = ImGui::GetContentRegionAvail();   //Get可绘制区域Size
+                        float available_w = content_avail.x;
+                        float available_h = content_avail.y;
+
+
+         /*               ImGui::SliderFloat("WindowRounding", &style.WindowRounding, 0.0f, 12.0f, "%.0f");
+                        ImGui::SliderFloat("FrameRounding", &style.FrameRounding, 0.0f, 12.0f, "%.0f");
+                        ImGui::SliderFloat("GrabRounding", &style.GrabRounding, 0.0f, 100.0f, "%.0f");
+                        ImGui::SliderFloat("TabRounding", &style.TabRounding, 0.0f, 100.0f, "%.0f");
+
+                        ImGui::SeparatorText("Tables");
+                        ImGui::SliderFloat("SeparatorTextBorderSize", &style.       SeparatorTextBorderSize     , 0.0f, 10.0f, "%.0f");
+                        ImGui::SliderFloat2("SeparatorTextAlign", (float*)&style.   SeparatorTextAlign          , 0.0f, 1.0f, "%.2f");
+                        ImGui::SliderFloat2("SeparatorTextPadding", (float*)&style. SeparatorTextPadding        , 0.0f, 40.0f, "%.0f");
+
+                        ImGui::SliderFloat("GrabMinSize", &style.   GrabMinSize, 1.0f, 50.0f, "%.0f");
+                        ImGui::SliderFloat("ScrollbarSize", &style. ScrollbarSize, 1.0f, 50.0f, "%.0f");
+                        ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 80.0f, "%.0f");
+                        ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 80.0f, "%.0f");
+                        ImGui::SliderFloat2("ItemSpacing", (float*)&style.ItemSpacing, 0.0f, 80.0f, "%.0f");
+                        ImGui::SliderFloat2("ItemInnerSpacing", (float*)&style.ItemInnerSpacing, 0.0f, 80.0f, "%.0f");*/
+
+
+                        ImGui::SeparatorText("开关功能");
+
                         ImGui::Checkbox("解除键盘锁", &isChecked3);
                         ImGui::Checkbox("解除鼠标锁", &isChecked6);
+                       // ImGui::Checkbox("USB", &isChecked_USB_STATUS);
                             //HOOK 去除键盘锁
                             //if (isChecked3 == true) {
                             //    hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
@@ -641,39 +695,50 @@ int main(int, char**)
                         //}
 
                         ImGui::Checkbox("强制窗口置于顶层", &isChecked); ImGui::SameLine(); ImGui::TextColored(color_Changes(10), "慎用___此功能影响键盘及鼠标点击.窗口拖拽");
+                        ImGui::Checkbox("循环回调杀进程", &isChecked7); 
+
                         if (isChecked == true) {
                             SetForegroundWindow(hwnd);
                             SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
                         }
+
                         ImGui::SliderInt("调整程序运行速度", &sleep_run, 100, 0);
                         Sleep(sleep_run);
 
 
+                        ImGui::SeparatorText("快捷按钮");
+
                         if (ImGui::Button("王果冻的博客网站"))
                         {
                             ShellExecute(0, 0, L"https://zsui2354.github.io", 0, 0, SW_SHOWNORMAL);
-                        }
+                        }ImGui::SameLine();
                         if (ImGui::Button("王果冻的SSH聊天室")) {
                            system("start ssh.exe apache.vyantaosheweining.top -p 8080");
-                        }
+                        }ImGui::SameLine(); 
                         if (ImGui::Button("我的空间下载列表")) {
                             ShellExecute(0, 0, L"http://site.vyantaosheweining.top/page/Download.html", 0, 0, SW_SHOWNORMAL);
-                        }
+                        }ImGui::SameLine(); 
                         if (ImGui::Button("我的开放节点列表")) {
                             ShellExecute(0, 0, L"https://zsui2354.github.io/nd-Guodong/", 0, 0, SW_SHOWNORMAL);
                         }
                         if (ImGui::Button("打开Command 终端")) {
                             system("start cd /");
-                        }
+                        }ImGui::SameLine();
                         if (ImGui::Button("中世纪决战|小游戏")) {
                             system("start Game.exe");
-                        }
-                        ImGui::Separator();
+                        }ImGui::SameLine();
+                        
                         if (ImGui::Button("广播窗口小化")) {
                             ShowWindow(class_PG, SW_MINIMIZE);
                             ShowWindow(class_AYY, SW_MINIMIZE);
                         }
-                        if (ImGui::Button("极域 学生端（冻结进程）")) 
+                        
+
+
+                        ImGui::SeparatorText("通过将进程挂起达到实现屏蔽控制"); 
+
+
+                        if (ImGui::Button("极域 学生端（冻结进程）"))
                         {
                             if (class_PG != NULL)
                             {
@@ -690,7 +755,7 @@ int main(int, char**)
                             {
                                 MessageBox(NULL, L"[ succeed ] 挂起进程成功", L"提示", MB_OK);
                             }
-                        }
+                        }ImGui::SameLine();
                         if (ImGui::Button("极域 学生端（恢复进程）"))
                         {
                             mapi.pid = GetPID(L"StudentMain.exe");
@@ -701,10 +766,9 @@ int main(int, char**)
                             }
                             if (DebugActiveProcessStop(mapi.pid))
                             {
-                                MessageBox(NULL,L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
+                                MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
                             }
                         }
-                        ImGui::Separator();
                         if (ImGui::Button("噢易云 学生端（冻结进程）"))
                         {
                             mapi.pid = GetPID(L"Student.exe");
@@ -717,7 +781,7 @@ int main(int, char**)
                             {
                                 MessageBox(NULL, L"[ succeed ] 挂起进程成功",L"提示", MB_OK);
                             }
-                        }
+                        }ImGui::SameLine();  
                         if (ImGui::Button("噢易云 学生端（恢复进程）"))
                         {
                             mapi.pid = GetPID(L"Student.exe");
@@ -730,10 +794,7 @@ int main(int, char**)
                             {
                                 MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
                             }
-                        }
-                        ImGui::Separator();
-                        ImGui::Checkbox("循环回调杀进程", &isChecked7);
-
+                        }ImGui::SameLine();
                         if (ImGui::Button("杀死学生端程序"))
                         {
                             mapi.pid = GetPID(L"StudentMain.exe");
@@ -744,37 +805,52 @@ int main(int, char**)
                             mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
                             if (!TerminateProcess(mapi.hProcess, 0))
                             {
-                                if (DebugActiveProcess(mapi.pid)) 
+                                if (DebugActiveProcess(mapi.pid))
                                 {
-                                    Destructors(hwnd, timerId); 
-                                    exit(0); 
+                                    Destructors(hwnd, timerId);
+                                    exit(0);
                                 }
                             }
                         }
+
+                        ImGui::Separator();
+                        
+                        
                         if (ImGui::Button("获取更新"))
                         {
                             ShellExecute(0, 0, L"https://gongjuegg.lanzoue.com/b0mawpmda", 0, 0, SW_SHOWNORMAL);
-                        }ImGui::SameLine();  ImGui::Text("密码:gr7q"); 
+                        }ImGui::SameLine();
+                        ImGui::Text("密码:gr7q"); 
                         
                         ImGui::Text("快捷键Ctrl + F  :杀死 学生端进程(对极域，噢易云兼容)");
                         ImGui::Text("快捷键Ctrl + Alt + S  :将窗口程序隐藏/显示");
                         ImGui::Text("快捷键Ctrl + 1  :按住窗口将处于聚焦置顶状态");
-                        ImGui::Separator(); 
-                        ImGui::TextColored(color_Changes(color_status),"学生端ID: %d", mapi.pid);
+                        ImGui::Separator();
+                        ImGui::SetCursorPosX(available_w / 2 - 140.0f);
+                        ImGui::TextColored(color_Changes(color_status), "学生端ID: %d", mapi.pid); ImGui::SameLine(0,150.0f); 
                         ImGui::TextColored(color_Changes(color_status),"学生端状态: %s", program_status.c_str());
-                        ImGui::Separator();  
-                        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate); 
+                        ImGui::Separator();
+
+
+                        available_w = content_avail.x;
+                        available_h = content_avail.y;
+                        ImGui::SetCursorPos(ImVec2(available_w / 2 - 135.0f, 770.0f));
+                        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+                        ImGui::SetCursorPos(ImVec2(available_w / 2 - 15.0f, 800.0f));
+                        if (ImGui::Button("关闭程序")) {
+                            CloseHandle(class_PG);
+                            Destructors(hwnd, timerId);
+                            ShutdownBlockReasonDestroy(GD_wnd);
+                            exit(0);
+                        }
                     ImGui::EndTabItem();
                     }
-                ImGui::EndTabItem();
+                    //if (ImGui::BeginTabItem("控制台")) {
+                    //    RenderConsole();
+                    //ImGui::EndTabItem();
+                    //}
+                ImGui::EndTabItem();// tab Bar EndTabItem
                 }
-                if (ImGui::Button("关闭程序")) {
-                    CloseHandle(class_PG);
-                    Destructors(hwnd, timerId);
-                    ShutdownBlockReasonDestroy(GD_wnd);
-                    exit(0);
-                }
-
             ImGui::End();
 
 
@@ -819,7 +895,8 @@ int main(int, char**)
                    // fasong = combined.c_str();
                     std::wcout << combined.c_str() << std::endl; 
                 }
-                ImGui::InputTextMultiline("消息编辑", multiLineText, IM_ARRAYSIZE(multiLineText), ImVec2(-1, 100)); // -1表示宽度自适应
+                ImGui::InputTextMultiline(" ", multiLineText, IM_ARRAYSIZE(multiLineText), ImVec2(-1, 100)); // -1表示宽度自适应
+                ImGui::NewLine();  
                 //if (ImGui::Button("发送消息(setConsole UTF-8)")) {
                 //    SetupConsole();
                 //    //c1 = text; 

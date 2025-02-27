@@ -43,6 +43,9 @@
     <ClCompile Include="lib_function.cpp">
       <Filter>sources</Filter>
     </ClCompile>
+    <ClCompile Include="Console.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\imconfig.h">
@@ -64,6 +67,9 @@
     <ClInclude Include="External_API.h" />
     <ClInclude Include="lib_function.h" />
     <ClInclude Include="udp.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="Console.h">
       <Filter>sources</Filter>
     </ClInclude>
   </ItemGroup>
