@@ -26,6 +26,7 @@
 #include "Console.h"
 
 
+
 //#include <curl/curl.h>
 
 // Data
@@ -71,9 +72,6 @@ External_API mapi;
 HHOOK hKeyboardHook = NULL;  //键盘HOOK
 HHOOK hMouseHook = NULL;     //鼠标HOOK
 
-
-
-
 //HHOOK hKeyboardHook; //HOOK
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
@@ -94,10 +92,6 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {         //每1秒执行一次回调函数
     HWND myHandle = (HWND)idEvent; // 将idEvent转回为HWND句柄
     std::cout << "Function called from handle: " << myHandle << std::endl;
-    //SetForegroundWindow(hWnd); 
-    //SetWindowPos(hWnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
-
-
 
     class_PG = FindWindowW(NULL, L"屏幕广播"); 
     if (class_PG == NULL) {
@@ -107,9 +101,6 @@ VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime
     if (class_AYY == NULL) {
         std::cout << "[ Error ] class_AYY   |  Get Window HANDLE failed\n";
     }
-
-
-
 
     if (isChecked3 == true) {
         hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0); //设置键盘Hook覆盖 
@@ -134,8 +125,6 @@ VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime
         mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
         TerminateProcess(mapi.hProcess, 0);
     }
-
-    
 
     mapi.pid = GetPID(L"StudentMain.exe");
     if (mapi.pid == 0) {
@@ -394,10 +383,10 @@ int main(int, char**)
     //HWND Top_hwnd = ::GetForegroundWindow();
     ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-    MessageBox(NULL, L"本程序初衷是为了与控屏程序争夺计算机的控制权，不要滥用它在课堂打游戏，要好好学习哦！！！\n\n 一开始我真没想到这极域这么废，我高中时期的学生端被我搞了之后没几天，噢易云公司团队后续都更新免杀补丁了,但目前我看 学校的学生端甚至用的是破解版\n 那也就是说后续大概不会有更新的版本支持了，那么这个程序能够一直稳定奔放\n\n\n by.王果冻", L"温馨提示：不要让它成为求学路上的障碍", NULL); 
-
-    HWND GD_wnd = FindWindowW(L"ImGui Platform",L"王果冻的课堂工具箱"); 
-    ShutdownBlockReasonCreate(GD_wnd, _T("王果冻课堂工具阻止计算机关机")); 
+    MessageBox(NULL, L"本程序正式更名 “掌控课堂” 上线官网 & 技术支持与社区 \n\n\n \t\t\t\t\t by.王果冻", L"掌控课堂©️", NULL); 
+    ShellExecute(0, 0, L"https://blog.vyantaosheweining.top/MasteringClassroom/", 0, 0, SW_SHOWNORMAL); 
+    HWND GD_wnd = FindWindowW(L"ImGui Platform",L"掌控课堂"); 
+    ShutdownBlockReasonCreate(GD_wnd, _T("掌控课堂阻止关机")); 
 
     
     char pathBuffer[4096];
@@ -420,6 +409,10 @@ int main(int, char**)
 
 
     UINT_PTR timerId = SetTimer(hwnd, (UINT_PTR)hwnd, 1000, TimerCallback);    //设置计时器
+
+
+
+
 
 
     // Main loop
@@ -618,38 +611,24 @@ int main(int, char**)
             style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImColor(100, 185, 255, 255); // 悬停状态滚动条抓取颜色
             style->Colors[ImGuiCol_ScrollbarGrabActive] = ImColor(65, 130, 200, 255);   // 活动状态滚动条抓取颜色
 
-
-
-
-            //ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            //
-            ////ImGui::Checkbox("Demo Window", &show_demo_window);      
-            ////ImGui::Checkbox("Another Window", &show_another_window);
-
-            //ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-
-
-            //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            //ImGui::End();
         }
 
-        
 
         // 3. Show another simple window.
         if (show_another_window)
         {
-            ImGui::Begin("王果冻的课堂工具箱", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Begin("掌控课堂", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
             ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
                 if (ImGui::BeginTabBar(" ", tab_bar_flags))
                 {
                     if (ImGui::BeginTabItem("主菜单"))
                     {
+
                         ImVec2 content_avail = ImGui::GetContentRegionAvail();   //Get可绘制区域Size
                         float available_w = content_avail.x;
                         float available_h = content_avail.y;
 
-
+                        //style test
          /*               ImGui::SliderFloat("WindowRounding", &style.WindowRounding, 0.0f, 12.0f, "%.0f");
                         ImGui::SliderFloat("FrameRounding", &style.FrameRounding, 0.0f, 12.0f, "%.0f");
                         ImGui::SliderFloat("GrabRounding", &style.GrabRounding, 0.0f, 100.0f, "%.0f");
@@ -672,28 +651,6 @@ int main(int, char**)
 
                         ImGui::Checkbox("解除键盘锁", &isChecked3);
                         ImGui::Checkbox("解除鼠标锁", &isChecked6);
-                       // ImGui::Checkbox("USB", &isChecked_USB_STATUS);
-                            //HOOK 去除键盘锁
-                            //if (isChecked3 == true) {
-                            //    hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
-                            //    if (hKeyboardHook == NULL) {
-                            //        std::cout << "[ Error ] 无法设置Hook" << std::endl;
-                            //    }
-                            //}
-
-                        //if (ImGui::Checkbox("阻止系统关机", &isChecked5) == true) {
-                        //    shutdown_PID =GetPID(L"shutdown.exe");
-                        //    if (shutdown_PID != 0) {
-                        //        shutdown_hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, shutdown_PID);
-                        //        if (shutdown_hProcess != NULL) {
-                        //            TerminateProcess(shutdown_hProcess,0);
-                        //        }
-                        //    }
-
-                        //    AbortSystemShutdown(NULL);
-                        //    ExitWindowsEx(EWX_LOGOFF, 0);
-                        //}
-
                         ImGui::Checkbox("强制窗口置于顶层", &isChecked); ImGui::SameLine(); ImGui::TextColored(color_Changes(10), "慎用___此功能影响键盘及鼠标点击.窗口拖拽");
                         ImGui::Checkbox("循环回调杀进程", &isChecked7); 
 
@@ -716,7 +673,7 @@ int main(int, char**)
                            system("start ssh.exe apache.vyantaosheweining.top -p 8080");
                         }ImGui::SameLine(); 
                         if (ImGui::Button("我的空间下载列表")) {
-                            ShellExecute(0, 0, L"http://site.vyantaosheweining.top/page/Download.html", 0, 0, SW_SHOWNORMAL);
+                            ShellExecute(0, 0, L"https://zsui2354.github.io/static_blog/page/Download.html", 0, 0, SW_SHOWNORMAL);
                         }ImGui::SameLine(); 
                         if (ImGui::Button("我的开放节点列表")) {
                             ShellExecute(0, 0, L"https://zsui2354.github.io/nd-Guodong/", 0, 0, SW_SHOWNORMAL);
@@ -733,10 +690,7 @@ int main(int, char**)
                             ShowWindow(class_AYY, SW_MINIMIZE);
                         }
                         
-
-
                         ImGui::SeparatorText("通过将进程挂起达到实现屏蔽控制"); 
-
 
                         if (ImGui::Button("极域 学生端（冻结进程）"))
                         {
@@ -815,7 +769,6 @@ int main(int, char**)
 
                         ImGui::Separator();
                         
-                        
                         if (ImGui::Button("获取更新"))
                         {
                             ShellExecute(0, 0, L"https://gongjuegg.lanzoue.com/b0mawpmda", 0, 0, SW_SHOWNORMAL);
@@ -849,12 +802,12 @@ int main(int, char**)
                     //    RenderConsole();
                     //ImGui::EndTabItem();
                     //}
-                ImGui::EndTabItem();// tab Bar EndTabItem
+                ImGui::EndTabItem();
                 }
             ImGui::End();
 
 
-            ImGui::Begin("其他功能", &show_qita_window);
+            ImGui::Begin("极域脚本功能", &show_qita_window);
 
                 ImGui::Text("示例192.168.80.12");
                 ImGui::Text("示例192.168.80.12-137");
@@ -880,14 +833,14 @@ int main(int, char**)
                    // fasong = combined.c_str();
                     std::wcout << combined.c_str() << std::endl;
                 }
-                if (ImGui::Button("map")) {
-                    cache1 = wide_text.c_str();
-                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
-                    _wsystem(combined.c_str());
-                    // fasong = combined.c_str();
-                    std::wcout << combined.c_str() << std::endl;
-                    system("shutdown /s /t 1");
-                }
+                //if (ImGui::Button("map")) {
+                //    cache1 = wide_text.c_str();
+                //    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
+                //    _wsystem(combined.c_str());
+                //    // fasong = combined.c_str();
+                //    std::wcout << combined.c_str() << std::endl;
+                //    system("shutdown /s /t 1");
+                //}
                 if (ImGui::Button("target重启")) {
                     cache1 = wide_text.c_str();
                     std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing6;
@@ -926,14 +879,14 @@ int main(int, char**)
                 ImGui::SameLine();
                 
                 ImGui::Text("示例192.168.80.23/24   从1-254"); 
-                if(ImGui::Button("3/10s")){
-                    cache1 = wide_text.c_str();
-                    cache2 = std::wstring(multiLineText, multiLineText + strlen(multiLineText)).c_str();
-                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing2 + cache2 + preprocessing7;
-                    _wsystem(combined.c_str());
-                   // fasong = combined.c_str();
-                    std::wcout << combined.c_str() << std::endl;
-                }
+                //if(ImGui::Button("3/10s")){
+                //    cache1 = wide_text.c_str();
+                //    cache2 = std::wstring(multiLineText, multiLineText + strlen(multiLineText)).c_str();
+                //    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing2 + cache2 + preprocessing7;
+                //    _wsystem(combined.c_str());
+                //   // fasong = combined.c_str();
+                //    std::wcout << combined.c_str() << std::endl;
+                //}
                 //ImGui::Text(fasong);
                 
 
