@@ -393,6 +393,10 @@ namespace ImGui
     IMGUI_API bool          BeginChild(ImGuiID id, const ImVec2& size = ImVec2(0, 0), ImGuiChildFlags child_flags = 0, ImGuiWindowFlags window_flags = 0);
     IMGUI_API void          EndChild();
 
+    //自定义分组控件
+    IMGUI_API void          BeginGroup();
+    IMGUI_API void          EndGroup();
+
     // Windows Utilities
     // - 'current window' = the window we are appending into while inside a Begin()/End() block. 'next window' = next window we will Begin() into.
     IMGUI_API bool          IsWindowAppearing();

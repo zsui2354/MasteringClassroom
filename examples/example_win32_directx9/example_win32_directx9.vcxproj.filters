@@ -46,6 +46,12 @@
     <ClCompile Include="Console.cpp">
       <Filter>sources</Filter>
     </ClCompile>
+    <ClCompile Include="jellywidgets.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="nav_elements.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\imconfig.h">
@@ -70,6 +76,18 @@
       <Filter>sources</Filter>
     </ClInclude>
     <ClInclude Include="Console.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="jellywidgets.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="nav_elements.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="src.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
       <Filter>sources</Filter>
     </ClInclude>
   </ItemGroup>

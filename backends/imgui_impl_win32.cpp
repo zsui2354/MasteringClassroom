@@ -1041,8 +1041,11 @@ static HWND ImGui_ImplWin32_GetHwndFromViewportID(ImGuiID viewport_id)
 
 static void ImGui_ImplWin32_CreateWindow(ImGuiViewport* viewport)
 {
+
     ImGui_ImplWin32_ViewportData* vd = IM_NEW(ImGui_ImplWin32_ViewportData)();
     viewport->PlatformUserData = vd;
+
+
 
     // Select style and parent window
     ImGui_ImplWin32_GetWin32StyleFromViewportFlags(viewport->Flags, &vd->DwStyle, &vd->DwExStyle);
@@ -1061,6 +1064,10 @@ static void ImGui_ImplWin32_CreateWindow(ImGuiViewport* viewport)
 
     // Secondary viewports store their imgui context
     ::SetPropA(vd->Hwnd, "IMGUI_CONTEXT", ImGui::GetCurrentContext());
+
+    HWND hwnd = reinterpret_cast<HWND>(viewport->PlatformHandleRaw);
+    HRGN hRgn = CreateRoundRectRgn(22,22, 730, 460, 22, 22);     // 创建圆角区域
+    SetWindowRgn(hwnd, hRgn, TRUE);                             // 设置窗口的圆角
 }
 
 static void ImGui_ImplWin32_DestroyWindow(ImGuiViewport* viewport)

@@ -164,8 +164,10 @@
     <ClCompile Include="addressOffset.cpp" />
     <ClCompile Include="Console.cpp" />
     <ClCompile Include="External_API.cpp" />
+    <ClCompile Include="jellywidgets.cpp" />
     <ClCompile Include="lib_function.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="nav_elements.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\imconfig.h" />
@@ -176,7 +178,11 @@
     <ClInclude Include="addressOffset.h" />
     <ClInclude Include="Console.h" />
     <ClInclude Include="External_API.h" />
+    <ClInclude Include="jellywidgets.h" />
     <ClInclude Include="lib_function.h" />
+    <ClInclude Include="nav_elements.h" />
+    <ClInclude Include="src.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="udp.h" />
   </ItemGroup>
   <ItemGroup>

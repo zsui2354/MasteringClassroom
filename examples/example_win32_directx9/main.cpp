@@ -20,10 +20,17 @@
 #include <tlhelp32.h>
 #include <vector>
 #include "lib_function.h"
+#include "jellywidgets.h"
+#include "nav_elements.h"
+#include "src.h"
 #include "External_API.h"
 #include <processthreadsapi.h>
 #include "udp.h"
 #include "Console.h"
+#include <thread>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 
 
@@ -68,7 +75,6 @@ bool isChecked_USB_STATUS = false;  //USB解除限制开关
 int color_status,color_green=100, color_red=0;
 External_API mapi;
 
-
 HHOOK hKeyboardHook = NULL;  //键盘HOOK
 HHOOK hMouseHook = NULL;     //鼠标HOOK
 
@@ -79,15 +85,45 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     }
     return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
+
+
 //HHOOK hMouseHook; //HOOK
+std::atomic<bool> isPressing(false);  // 原子标志位线程安全
+POINT currentPoint;
+
+void RecoilThread() {
+    while (true) {
+        if (isPressing) {
+            if (GetCursorPos(&currentPoint)) {
+                SetCursorPos(currentPoint.x, currentPoint.y  /* + 1*/); // 模拟压枪
+                Sleep(10);  // 控制压枪速度，单位 ms，可调
+            }
+        }
+        else {
+            Sleep(1);  // 节省资源
+        }
+    }
+}
+
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
         printf("Mouse Event: %ld\n", wParam);
-        return 0; 
-    }
-    return CallNextHookEx(NULL, nCode, wParam, lParam);
-}
 
+        switch (wParam) {
+        case WM_LBUTTONDOWN:  // 513
+            isPressing = true;
+            break;
+        case WM_LBUTTONUP:    // 514
+            isPressing = false;
+            break;
+        default:
+            break;
+
+            return 0;
+        }
+        return CallNextHookEx(NULL, nCode, wParam, lParam);
+    }
+}
 
 VOID CALLBACK TimerCallback(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {         //每1秒执行一次回调函数
     HWND myHandle = (HWND)idEvent; // 将idEvent转回为HWND句柄
@@ -160,22 +196,6 @@ void Destructors(HANDLE hwnd, UINT_PTR timerID) {
 
 
 
-
-
-//HHOOK kbdHook;
-//
-//LRESULT CALLBACK HookProc(int nCode, WPARAM wParam, LPARAM lParam) {
-//    return FALSE;
-//}
-//DWORD WINAPI KeyHookThreadProc(LPVOID lpParameter) {
-//    while (true) {
-//        kbdHook = (HHOOK)SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC)HookProc, GetModuleHandle(NULL), 0);
-//        Sleep(25);
-//        UnhookWindowsHookEx(kbdHook);
-//    }
-//    return 0;
-//}
-
 void SetupConsole() {
     // 设置控制台输出为 UTF-8
     SetConsoleOutputCP(CP_UTF8);
@@ -183,13 +203,62 @@ void SetupConsole() {
     SetConsoleCP(CP_UTF8);
 }
 
+int width, height, channels;
+unsigned char* pixels = stbi_load_from_memory(logo, sizeof(logo), &width, &height, &channels, 4);   //将 logo 数组转换为像素数据
+LPDIRECT3DTEXTURE9 g_Texture = nullptr;// 全局纹理句柄
+void LoadTextureFromMemory(LPDIRECT3DDEVICE9 device)//将像素数据上传为 DX9 纹理
+{
+    if (g_Texture) return;
 
+    int width, height, channels;
+    unsigned char* pixels = stbi_load_from_memory(logo, sizeof(logo), &width, &height, &channels, 4);
+    if (!pixels) return;
 
-//#include <windows.h>
-//#include <iostream>
-//#include <string>
-//#include <imgui.h>
+    // 创建纹理
+    HRESULT hr = device->CreateTexture(
+        width, height,
+        1, 0, D3DFMT_A8R8G8B8,
+        D3DPOOL_MANAGED,
+        &g_Texture, NULL
+    );
+    if (FAILED(hr)) {
+        stbi_image_free(pixels);
+        return;
+    }
 
+    // 将像素数据写入纹理
+    D3DLOCKED_RECT locked_rect;
+    g_Texture->LockRect(0, &locked_rect, NULL, 0);
+
+    for (int y = 0; y < height; y++) {
+        DWORD* dst = (DWORD*)((BYTE*)locked_rect.pBits + y * locked_rect.Pitch);
+        for (int x = 0; x < width; x++) {
+            int i = (y * width + x) * 4;
+            dst[x] = D3DCOLOR_ARGB(pixels[i + 3], pixels[i], pixels[i + 1], pixels[i + 2]);
+        }
+    }
+
+    g_Texture->UnlockRect(0);
+    stbi_image_free(pixels);
+}
+
+void ShowUI(LPDIRECT3DDEVICE9 device)
+{
+    LoadTextureFromMemory(device);
+
+    if (g_Texture)
+    {
+        
+        ImGui::BeginGroup(); {
+            ImGui::SetCursorPos(ImVec2(70.0f, 35.0f));
+            ImGui::Image((void*)g_Texture, ImVec2(860 / 15, 1231 /15)); // 调整大小
+            ImGui::SetCursorPos(ImVec2(20.0f, 115.0f));
+            ImGui::Text("             掌控课堂");
+        }ImGui::EndGroup();
+        
+        
+    }
+}
 
 
 void runConsoleProgramWithInput(const std::string& input) {
@@ -353,17 +422,6 @@ int main(int, char**)
 
 
 
-    
-
-
-    //    //HOOK 去除键盘锁
-    //hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
-    //if (hKeyboardHook == NULL) {
-    //    MessageBox(NULL, L"无法设置键盘钩子！", L"错误", MB_ICONERROR);
-    //    return 0;
-    //}
-    
-
     if (!RegisterHotKey(NULL, DeBug_quit, MOD_CONTROL, VK_RETURN)) {
         std::cerr << "无法注册全局热键！" << std::endl;
     }
@@ -405,16 +463,15 @@ int main(int, char**)
     }
 
 
-    //InstallHook(); 
-
 
     UINT_PTR timerId = SetTimer(hwnd, (UINT_PTR)hwnd, 1000, TimerCallback);    //设置计时器
 
+    //启动压枪线程
+    std::thread recoil(RecoilThread);
+    recoil.detach(); // 分离线程
 
 
-
-
-
+   
     // Main loop
     bool done = false;
     while (!done)
@@ -445,14 +502,14 @@ int main(int, char**)
                     mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
                     if (!TerminateProcess(mapi.hProcess, 0))
                     {
-                        //MessageBox(NULL, L"执行失败", L"提示", MB_OK);
-                        //if (DebugActiveProcess(mapi.pid))
-                        //{
-                        //    CloseHandle(mapi.hProcess);
-                        //    UnregisterHotKey(NULL, HOTKEY_ID);
-                        //    UnregisterHotKey(NULL, HOTKEY_ID_show);
-                        //    exit(0);
-                        //}
+                        MessageBox(NULL, L"执行失败", L"提示", MB_OK);
+                        if (DebugActiveProcess(mapi.pid))
+                        {
+                            CloseHandle(mapi.hProcess);
+                            UnregisterHotKey(NULL, HOTKEY_ID);
+                            UnregisterHotKey(NULL, HOTKEY_ID_show);
+                            exit(0);
+                        }
                     }
                 }
 
@@ -489,13 +546,14 @@ int main(int, char**)
                         SetForegroundWindow(hwnd);
                         SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
                 }
-                //if (msg.wParam == DeBug_quit) {
-                //    std::cout << "Crtl + Enter 热键被触发！" << std::endl;
-                //    CloseHandle(class_PG);
-                //    Destructors(hwnd, timerId);
-                //    ShutdownBlockReasonDestroy(GD_wnd);
-                //    exit(0);
-                //}
+
+                if (msg.wParam == DeBug_quit) {
+                    std::cout << "Crtl + Enter 热键被触发！" << std::endl;
+                    CloseHandle(class_PG);
+                    Destructors(hwnd, timerId);
+                    ShutdownBlockReasonDestroy(GD_wnd);
+                    exit(0); 
+                }
 
 
             }
@@ -544,7 +602,7 @@ int main(int, char**)
             ImGuiStyle* style = &ImGui::GetStyle();
 
             style->Alpha = 1.0f;
-            style->WindowRounding = 5.0f;
+            style->WindowRounding = 12.0f;
             style->FrameRounding = 12.0f;
             style->GrabRounding = 100.0f;
             style->TabRounding = 9.0f;
@@ -617,280 +675,297 @@ int main(int, char**)
         // 3. Show another simple window.
         if (show_another_window)
         {
-            ImGui::Begin("掌控课堂", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+
+
+            //ImGuiStyle& style = ImGui::GetStyle();
+            //style.WindowRounding = 12.0f; // 设置窗口圆角为 12 像素
+            //style.Colors[ImGuiCol_WindowBg] = ImVec4(0.07f, 0.07f, 0.08f, 1.0f); // 可选：背景颜色
+
+
+            //ImGuiStyle& style = ImGui::GetStyle();
+            //style.WindowRounding = 12.0f;
+            //style.Colors[ImGuiCol_WindowBg] = ImVec4(0.1f, 0.1f, 0.1f, 1.0f); // 确保 alpha 不是 0
+            //style.WindowBorderSize = 1.0f;
+
+            style.Colors[ImGuiCol_WindowBg] = ImVec4(0.07f, 0.07f, 0.08f, 1.0f);
+            ImGui::SetNextWindowSize({ 730, 460 });
+            ImGui::Begin("掌控课堂", &show_another_window, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
             ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-                if (ImGui::BeginTabBar(" ", tab_bar_flags))
+
+
+
+
+            {
+                ImVec2 content_avail = ImGui::GetContentRegionAvail();   //Get可绘制区域Size
+                float available_w = content_avail.x;
+                float available_h = content_avail.y;
+
+                //style test
+ /*               ImGui::SliderFloat("WindowRounding", &style.WindowRounding, 0.0f, 12.0f, "%.0f");
+                ImGui::SliderFloat("FrameRounding", &style.FrameRounding, 0.0f, 12.0f, "%.0f");
+                ImGui::SliderFloat("GrabRounding", &style.GrabRounding, 0.0f, 100.0f, "%.0f");
+                ImGui::SliderFloat("TabRounding", &style.TabRounding, 0.0f, 100.0f, "%.0f");
+
+                ImGui::SeparatorText("Tables");
+                ImGui::SliderFloat("SeparatorTextBorderSize", &style.       SeparatorTextBorderSize     , 0.0f, 10.0f, "%.0f");
+                ImGui::SliderFloat2("SeparatorTextAlign", (float*)&style.   SeparatorTextAlign          , 0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat2("SeparatorTextPadding", (float*)&style. SeparatorTextPadding        , 0.0f, 40.0f, "%.0f");
+
+                ImGui::SliderFloat("GrabMinSize", &style.   GrabMinSize, 1.0f, 50.0f, "%.0f");
+                ImGui::SliderFloat("ScrollbarSize", &style. ScrollbarSize, 1.0f, 50.0f, "%.0f");
+                ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 80.0f, "%.0f");
+                ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 80.0f, "%.0f");
+                ImGui::SliderFloat2("ItemSpacing", (float*)&style.ItemSpacing, 0.0f, 80.0f, "%.0f");
+                ImGui::SliderFloat2("ItemInnerSpacing", (float*)&style.ItemInnerSpacing, 0.0f, 80.0f, "%.0f");*/
+
+                ImGui::SetCursorPos(ImVec2(700, 30));
+                if (JellyGui::CustomButton("X", ImVec2(22, 22), 100.0f)) {
+                    CloseHandle(class_PG);
+                    Destructors(hwnd, timerId);
+                    ShutdownBlockReasonDestroy(GD_wnd);
+                    exit(0);
+                }
+
+
+                ImVec2 p1 = ImGui::GetCursorScreenPos();              // 起点
+                p1 = ImVec2(p1.x + 155, p1.y = 0);
+                ImVec2 p2 = ImVec2(p1.x, p1.y + 1000);                 // 终点
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();   // 获取当前窗口的绘图列表
+                draw_list->AddLine(p1, p2, IM_COL32(255, 255, 255, 45), 1.0f);
+                draw_list->AddRectFilled(ImVec2(p1.x - 155, p1.y = 0), p2, IM_COL32(23, 23, 26, 255), 1.0f);//rgb(23, 23, 26)  
+
+
+
+                ShowUI(g_pd3dDevice);  // 渲染 LOGO
+
+                ImGui::SetCursorPosY(170.0f);
+                ImGui::BeginGroup(); {
+                    if (elements::subtab("         常用功能", subtab == general)) { subtab = general; }
+                    if (elements::subtab("         脚本功能", subtab == accuracy)) { subtab = accuracy; }
+                    if (elements::subtab("         其他", subtab == exploits)) { subtab = exploits; }
+                   // if (elements::subtab("Exploits", subtab == exploits)) { subtab = exploits; }
+                }ImGui::EndGroup();
+
+                switch (subtab)
                 {
-                    if (ImGui::BeginTabItem("主菜单"))
-                    {
+                case general:      //常用功能
 
-                        ImVec2 content_avail = ImGui::GetContentRegionAvail();   //Get可绘制区域Size
-                        float available_w = content_avail.x;
-                        float available_h = content_avail.y;
+                        ImGui::SetCursorPos(ImVec2(190.0f, 40.0f));
+                        elements::begin_child("开关", ImVec2(240, 400) ,true); { // 设置标题栏的显示
+                            //ImGui::SetCursorPos(ImVec2(0, -15));
+                            //ImGui::SeparatorText("开关功能");
+                            JellyGui::SlideSwitchLerp("解除键盘锁", &isChecked3, ImVec2(40, 20));
+                            ImGui::Spacing();
+                            JellyGui::SlideSwitchLerp("解除鼠标锁", &isChecked6, ImVec2(40, 20));
+                            ImGui::Spacing();
+                            JellyGui::SlideSwitchLerp("强制窗口置于顶层", &isChecked, ImVec2(40, 20));
+                            ImGui::Spacing();
+                            JellyGui::SlideSwitchLerp("循环回调杀进程", &isChecked7, ImVec2(40, 20));
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::SliderInt("调整程序运行速度限制", &sleep_run, 100, 0);
+                            Sleep(sleep_run); 
+                            ImGui::Spacing();
 
-                        //style test
-         /*               ImGui::SliderFloat("WindowRounding", &style.WindowRounding, 0.0f, 12.0f, "%.0f");
-                        ImGui::SliderFloat("FrameRounding", &style.FrameRounding, 0.0f, 12.0f, "%.0f");
-                        ImGui::SliderFloat("GrabRounding", &style.GrabRounding, 0.0f, 100.0f, "%.0f");
-                        ImGui::SliderFloat("TabRounding", &style.TabRounding, 0.0f, 100.0f, "%.0f");
-
-                        ImGui::SeparatorText("Tables");
-                        ImGui::SliderFloat("SeparatorTextBorderSize", &style.       SeparatorTextBorderSize     , 0.0f, 10.0f, "%.0f");
-                        ImGui::SliderFloat2("SeparatorTextAlign", (float*)&style.   SeparatorTextAlign          , 0.0f, 1.0f, "%.2f");
-                        ImGui::SliderFloat2("SeparatorTextPadding", (float*)&style. SeparatorTextPadding        , 0.0f, 40.0f, "%.0f");
-
-                        ImGui::SliderFloat("GrabMinSize", &style.   GrabMinSize, 1.0f, 50.0f, "%.0f");
-                        ImGui::SliderFloat("ScrollbarSize", &style. ScrollbarSize, 1.0f, 50.0f, "%.0f");
-                        ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 80.0f, "%.0f");
-                        ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 80.0f, "%.0f");
-                        ImGui::SliderFloat2("ItemSpacing", (float*)&style.ItemSpacing, 0.0f, 80.0f, "%.0f");
-                        ImGui::SliderFloat2("ItemInnerSpacing", (float*)&style.ItemInnerSpacing, 0.0f, 80.0f, "%.0f");*/
-
-
-                        ImGui::SeparatorText("开关功能");
-
-                        ImGui::Checkbox("解除键盘锁", &isChecked3);
-                        ImGui::Checkbox("解除鼠标锁", &isChecked6);
-                        ImGui::Checkbox("强制窗口置于顶层", &isChecked); ImGui::SameLine(); ImGui::TextColored(color_Changes(10), "慎用___此功能影响键盘及鼠标点击.窗口拖拽");
-                        ImGui::Checkbox("循环回调杀进程", &isChecked7); 
-
-                        if (isChecked == true) {
-                            SetForegroundWindow(hwnd);
-                            SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
-                        }
-
-                        ImGui::SliderInt("调整程序运行速度", &sleep_run, 100, 0);
-                        Sleep(sleep_run);
-
-
-                        ImGui::SeparatorText("快捷按钮");
-
-                        if (ImGui::Button("王果冻的博客网站"))
-                        {
-                            ShellExecute(0, 0, L"https://zsui2354.github.io", 0, 0, SW_SHOWNORMAL);
-                        }ImGui::SameLine();
-                        if (ImGui::Button("王果冻的SSH聊天室")) {
-                           system("start ssh.exe apache.vyantaosheweining.top -p 8080");
-                        }ImGui::SameLine(); 
-                        if (ImGui::Button("我的空间下载列表")) {
-                            ShellExecute(0, 0, L"https://zsui2354.github.io/static_blog/page/Download.html", 0, 0, SW_SHOWNORMAL);
-                        }ImGui::SameLine(); 
-                        if (ImGui::Button("我的开放节点列表")) {
-                            ShellExecute(0, 0, L"https://zsui2354.github.io/nd-Guodong/", 0, 0, SW_SHOWNORMAL);
-                        }
-                        if (ImGui::Button("打开Command 终端")) {
-                            system("start cd /");
-                        }ImGui::SameLine();
-                        if (ImGui::Button("中世纪决战|小游戏")) {
-                            system("start Game.exe");
-                        }ImGui::SameLine();
-                        
-                        if (ImGui::Button("广播窗口小化")) {
-                            ShowWindow(class_PG, SW_MINIMIZE);
-                            ShowWindow(class_AYY, SW_MINIMIZE);
-                        }
-                        
-                        ImGui::SeparatorText("通过将进程挂起达到实现屏蔽控制"); 
-
-                        if (ImGui::Button("极域 学生端（冻结进程）"))
-                        {
-                            if (class_PG != NULL)
+                            if (JellyGui::CustomButton("广播窗口小化", ImVec2(210, 30)))
                             {
-                                SetWindowPos(class_PG, HWND_BOTTOM, 0, 0, 1280, 800, SWP_NOMOVE);
                                 ShowWindow(class_PG, SW_MINIMIZE);
+                                ShowWindow(class_AYY, SW_MINIMIZE);
                             }
-                            mapi.pid = GetPID(L"StudentMain.exe");
-                            mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-                            if (mapi.hProcess == NULL)
+                            ImGui::Spacing();
+                            if (JellyGui::CustomButton("杀死学生端程序", ImVec2(210, 30)))
                             {
-                                std::cout << "[ Error ] 获取极域学生端进程句柄失败" << std::endl;
-                            }
-                            if (DebugActiveProcess(mapi.pid))
-                            {
-                                MessageBox(NULL, L"[ succeed ] 挂起进程成功", L"提示", MB_OK);
-                            }
-                        }ImGui::SameLine();
-                        if (ImGui::Button("极域 学生端（恢复进程）"))
-                        {
-                            mapi.pid = GetPID(L"StudentMain.exe");
-                            mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-                            if (mapi.hProcess == NULL)
-                            {
-                                std::cout << "[ Error ] 获取极域学生端进程句柄失败" << std::endl;
-                            }
-                            if (DebugActiveProcessStop(mapi.pid))
-                            {
-                                MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
-                            }
-                        }
-                        if (ImGui::Button("噢易云 学生端（冻结进程）"))
-                        {
-                            mapi.pid = GetPID(L"Student.exe");
-                            mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-                            if (mapi.hProcess == NULL)
-                            {
-                                std::cout << "[ Error ] Failed to get the process handle of the AOYI student side" << std::endl;
-                            }
-                            if (DebugActiveProcess(mapi.pid))
-                            {
-                                MessageBox(NULL, L"[ succeed ] 挂起进程成功",L"提示", MB_OK);
-                            }
-                        }ImGui::SameLine();  
-                        if (ImGui::Button("噢易云 学生端（恢复进程）"))
-                        {
-                            mapi.pid = GetPID(L"Student.exe");
-                            mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-                            if (mapi.hProcess == NULL)
-                            {
-                                std::cout << "[ Error ] Failed to get the process handle of the AOYI student side" << std::endl;
-                            }
-                            if (DebugActiveProcessStop(mapi.pid))
-                            {
-                                MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
-                            }
-                        }ImGui::SameLine();
-                        if (ImGui::Button("杀死学生端程序"))
-                        {
-                            mapi.pid = GetPID(L"StudentMain.exe");
-                            if (mapi.pid == 0)
-                            {
-                                mapi.pid = GetPID(L"Student.exe");
-                            }
-                            mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
-                            if (!TerminateProcess(mapi.hProcess, 0))
-                            {
-                                if (DebugActiveProcess(mapi.pid))
+                                mapi.pid = GetPID(L"StudentMain.exe");
+                                if (mapi.pid == 0)
                                 {
-                                    Destructors(hwnd, timerId);
-                                    exit(0);
+                                    mapi.pid = GetPID(L"Student.exe");
+                                }
+                                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+                                if (!TerminateProcess(mapi.hProcess, 0))
+                                {
+                                    if (DebugActiveProcess(mapi.pid))
+                                    {
+                                        Destructors(hwnd, timerId);
+                                        exit(0);
+                                    }
                                 }
                             }
+                        }elements::end_child();
+                    
+                        ImGui::SetCursorPos(ImVec2(450.0f, 40.0f));
+                        elements::begin_child("快捷按钮", ImVec2(240, 400), true); { // 设置标题栏的显示
+                            //ImGui::SetCursorPos(ImVec2(0, -15));
+                            //ImGui::SeparatorText("快捷按钮");
+                            if (JellyGui::CustomButton("王果冻的主页", ImVec2(210, 30)))
+                            {
+                                ShellExecute(0, 0, L"https://zsui2354.github.io/static_blog", 0, 0, SW_SHOWNORMAL);
+                            }
+                            if (JellyGui::CustomButton("王果冻的SSH聊天室", ImVec2(210, 30)))
+                            {
+                                system("start ssh.exe apache.vyantaosheweining.top -p 8080");
+                            }
+                            //if (JellyGui::CustomButton("我的空间下载列表", ImVec2(210, 30)))
+                            //{
+                            //    ShellExecute(0, 0, L"https://zsui2354.github.io/static_blog/page/Download.html", 0, 0, SW_SHOWNORMAL);
+                            //}
+                            if (JellyGui::CustomButton("我的开放节点列表", ImVec2(210, 30)))
+                            {
+                                ShellExecute(0, 0, L"https://zsui2354.github.io/nd-Guodong/", 0, 0, SW_SHOWNORMAL);
+                            }
+                            if (JellyGui::CustomButton("中世纪决战|小游戏", ImVec2(210, 30)))
+                            {
+                                system("start Game.exe");
+                            }
+                            if (JellyGui::CustomButton("极域 学生端（冻结进程）", ImVec2(210, 30)))
+                            {
+                                if (class_PG != NULL)
+                                {
+                                    SetWindowPos(class_PG, HWND_BOTTOM, 0, 0, 1280, 800, SWP_NOMOVE);
+                                    ShowWindow(class_PG, SW_MINIMIZE);
+                                }
+                                mapi.pid = GetPID(L"StudentMain.exe");
+                                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+                                if (mapi.hProcess == NULL)
+                                {
+                                    std::cout << "[ Error ] 获取极域学生端进程句柄失败" << std::endl;
+                                }
+                                if (DebugActiveProcess(mapi.pid))
+                                {
+                                    MessageBox(NULL, L"[ succeed ] 挂起进程成功", L"提示", MB_OK);
+                                }
+                            }
+                            if (JellyGui::CustomButton("极域 学生端（恢复进程）", ImVec2(210, 30)))
+                            {
+                                mapi.pid = GetPID(L"StudentMain.exe");
+                                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+                                if (mapi.hProcess == NULL)
+                                {
+                                    std::cout << "[ Error ] 获取极域学生端进程句柄失败" << std::endl;
+                                }
+                                if (DebugActiveProcessStop(mapi.pid))
+                                {
+                                    MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
+                                }
+                            }
+                            if (JellyGui::CustomButton("噢易云 学生端（冻结进程）", ImVec2(210, 30)))
+                            {
+                                mapi.pid = GetPID(L"Student.exe");
+                                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+                                if (mapi.hProcess == NULL)
+                                {
+                                    std::cout << "[ Error ] Failed to get the process handle of the AOYI student side" << std::endl;
+                                }
+                                if (DebugActiveProcess(mapi.pid))
+                                {
+                                    MessageBox(NULL, L"[ succeed ] 挂起进程成功", L"提示", MB_OK);
+                                }
+                            }
+                            if (JellyGui::CustomButton("噢易云 学生端（恢复进程）", ImVec2(210, 30)))
+                            {
+                                mapi.pid = GetPID(L"Student.exe");
+                                mapi.hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, mapi.pid);
+                                if (mapi.hProcess == NULL)
+                                {
+                                    std::cout << "[ Error ] Failed to get the process handle of the AOYI student side" << std::endl;
+                                }
+                                if (DebugActiveProcessStop(mapi.pid))
+                                {
+                                    MessageBox(NULL, L"[ succeed ] 恢复进程成功", L"提示", MB_OK);
+                                }
+                            }
+                        }elements::end_child();
+                    break;
+                case accuracy:      //脚本功能
+                    ImGui::SetCursorPos(ImVec2(190.0f, 40.0f)); 
+                    elements::begin_child("脚本功能", ImVec2(500, 400), true); {
+                        ImGui::Text("示例192.168.80.12");
+                        ImGui::Text("示例192.168.80.12-137");
+                        ImGui::InputText("IP地址", text, IM_ARRAYSIZE(text));
+                        std::wstring wide_text = std::wstring(text, text + strlen(text)); // 将输入的文本转换为宽字符
+
+                        ImGui::InputTextMultiline(" ", multiLineText, IM_ARRAYSIZE(multiLineText), ImVec2(-1, 100)); // -1表示宽度自适应
+                        ImGui::NewLine();
+
+                        if (JellyGui::CustomButton("本机脱离屏幕控制", ImVec2(145, 30)))
+                        {
+                            _wsystem(L"start udp.exe -e break");
+                        }ImGui::SameLine();
+                        if (JellyGui::CustomButton("本机恢复屏幕控制", ImVec2(145, 30)))
+                        {
+                            _wsystem(L"start udp.exe -e continue");
+                        }ImGui::SameLine();
+                        if (JellyGui::CustomButton("target弹计算器", ImVec2(145, 30)))
+                        {
+                            cache1 = wide_text.c_str();
+                            std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing4;
+                            _wsystem(combined.c_str());
+                            // fasong = combined.c_str();
+                            std::wcout << combined.c_str() << std::endl;
                         }
 
-                        ImGui::Separator();
-                        
+                        if (JellyGui::CustomButton("target关机", ImVec2(145, 30)))
+                        {
+                            cache1 = wide_text.c_str();
+                            std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
+                            _wsystem(combined.c_str());
+                            // fasong = combined.c_str();
+                            std::wcout << combined.c_str() << std::endl;
+                        }ImGui::SameLine();
+                        if (JellyGui::CustomButton("target重启", ImVec2(145, 30)))
+                        {
+                            cache1 = wide_text.c_str();
+                            std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing6;
+                            _wsystem(combined.c_str());
+                            // fasong = combined.c_str();
+                            std::wcout << combined.c_str() << std::endl;
+                        }ImGui::SameLine();
+                        if (JellyGui::CustomButton("发送消息", ImVec2(145, 30)))
+                        {
+                            cache1 = wide_text.c_str();
+                            std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing6;
+                            _wsystem(combined.c_str());
+                            // fasong = combined.c_str();
+                            std::wcout << combined.c_str() << std::endl;
+                        }ImGui::SameLine();
+                    }elements::end_child(); 
+                    break;
+                case exploits:      //其他功能
+                    ImGui::SetCursorPos(ImVec2(190.0f, 40.0f));
+                    elements::begin_child("更新 & 热键", ImVec2(500, 200), true); { // 设置标题栏的显示
+                       /* ImGui::SetCursorPos(ImVec2(0, -5));*/
+                      //  ImGui::SeparatorText("更新 & 热键");
                         if (ImGui::Button("获取更新"))
                         {
                             ShellExecute(0, 0, L"https://gongjuegg.lanzoue.com/b0mawpmda", 0, 0, SW_SHOWNORMAL);
                         }ImGui::SameLine();
-                        ImGui::Text("密码:gr7q"); 
-                        
+                        ImGui::Text("密码:gr7q");
                         ImGui::Text("快捷键Ctrl + F  :杀死 学生端进程(对极域，噢易云兼容)");
                         ImGui::Text("快捷键Ctrl + Alt + S  :将窗口程序隐藏/显示");
                         ImGui::Text("快捷键Ctrl + 1  :按住窗口将处于聚焦置顶状态");
-                        ImGui::Separator();
-                        ImGui::SetCursorPosX(available_w / 2 - 140.0f);
-                        ImGui::TextColored(color_Changes(color_status), "学生端ID: %d", mapi.pid); ImGui::SameLine(0,150.0f); 
-                        ImGui::TextColored(color_Changes(color_status),"学生端状态: %s", program_status.c_str());
-                        ImGui::Separator();
-
-
-                        available_w = content_avail.x;
-                        available_h = content_avail.y;
-                        ImGui::SetCursorPos(ImVec2(available_w / 2 - 135.0f, 770.0f));
-                        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-                        ImGui::SetCursorPos(ImVec2(available_w / 2 - 15.0f, 800.0f));
-                        if (ImGui::Button("关闭程序")) {
-                            CloseHandle(class_PG);
-                            Destructors(hwnd, timerId);
-                            ShutdownBlockReasonDestroy(GD_wnd);
-                            exit(0);
-                        }
-                    ImGui::EndTabItem();
-                    }
-                    //if (ImGui::BeginTabItem("控制台")) {
-                    //    RenderConsole();
-                    //ImGui::EndTabItem();
-                    //}
-                ImGui::EndTabItem();
-                }
-            ImGui::End();
-
-
-            ImGui::Begin("极域脚本功能", &show_qita_window);
-
-                ImGui::Text("示例192.168.80.12");
-                ImGui::Text("示例192.168.80.12-137");
-                ImGui::InputText("IP地址", text, IM_ARRAYSIZE(text));
-                std::wstring wide_text = std::wstring(text, text + strlen(text)); // 将输入的文本转换为宽字符
-                if (ImGui::Button("本机脱离屏幕控制")) {
-                    _wsystem(L"start udp.exe -e break");
-                }
-                if (ImGui::Button("本机恢复屏幕控制")) {
-                    _wsystem(L"start udp.exe -e continue");
-                }
-                if (ImGui::Button("target弹一个计算器")) {
-                    cache1 = wide_text.c_str();
-                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing4;
-                    _wsystem(combined.c_str());
-                   // fasong = combined.c_str();
-                    std::wcout << combined.c_str() << std::endl;
-                }
-                if (ImGui::Button("target关机")) {
-                    cache1 = wide_text.c_str();
-                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
-                    _wsystem(combined.c_str());
-                   // fasong = combined.c_str();
-                    std::wcout << combined.c_str() << std::endl;
-                }
-                //if (ImGui::Button("map")) {
-                //    cache1 = wide_text.c_str();
-                //    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing5;
-                //    _wsystem(combined.c_str());
-                //    // fasong = combined.c_str();
-                //    std::wcout << combined.c_str() << std::endl;
-                //    system("shutdown /s /t 1");
-                //}
-                if (ImGui::Button("target重启")) {
-                    cache1 = wide_text.c_str();
-                    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing6;
-                    _wsystem(combined.c_str());
-                   // fasong = combined.c_str();
-                    std::wcout << combined.c_str() << std::endl; 
-                }
-                ImGui::InputTextMultiline(" ", multiLineText, IM_ARRAYSIZE(multiLineText), ImVec2(-1, 100)); // -1表示宽度自适应
-                ImGui::NewLine();  
-                //if (ImGui::Button("发送消息(setConsole UTF-8)")) {
-                //    SetupConsole();
-                //    //c1 = text; 
-                //    //c2 = multiLineText;  
-                //    //std::string combined = std::string(p1) +c1 + p2 + "\""+c2+ "\"";
-                //    std::string command = "set PYTHONIOENCODING=utf-8 & chcp 65001 & start cmd /k python udp.py -ip 1.1.1.1 -msg \"我是IMGUI\"";
-                //    system(command.c_str());
-                //    std::cout << command << std::endl;
-                //   // system(combined.c_str());
-                //   // fasong = combined.c_str();
-                //   // std::cout << combined.c_str() << std::endl;
-                //}
-                if (ImGui::Button("发送消息")) {
-                    c1 = text;
-                    c2 = multiLineText;
-                    std::string combined = std::string(p1) + c1  + p2 +"\""+ c2+ "\"";
-                    //std::string command =  combined;
-                    //runConsoleProgramWithInput(combined.c_str()); // 调用函数 
-                    // fasong = combined.c_str();
-                    std::string utf8Combined = ConvertToUTF8(combined);
-                    system(utf8Combined.c_str());
-                    std::cout << utf8Combined.c_str() << std::endl;
-                    std::cout << c2 << std::endl;
+                    }elements::end_child();
+                    break;
+                default:
+                    break;
                 }
 
 
-                ImGui::SameLine();
-                
-                ImGui::Text("示例192.168.80.23/24   从1-254"); 
-                //if(ImGui::Button("3/10s")){
-                //    cache1 = wide_text.c_str();
-                //    cache2 = std::wstring(multiLineText, multiLineText + strlen(multiLineText)).c_str();
-                //    std::wstring combined = std::wstring(preprocessing1) + cache1 + preprocessing2 + cache2 + preprocessing7;
-                //    _wsystem(combined.c_str());
-                //   // fasong = combined.c_str();
-                //    std::wcout << combined.c_str() << std::endl;
-                //}
-                //ImGui::Text(fasong);
+                ImGui::SetCursorPos(ImVec2(40.0f, 390.0f));
+                ImGui::TextColored(color_Changes(color_status), "学生端ID: %d", mapi.pid);// ImGui::SameLine(0, 150.0f);
+                ImGui::SetCursorPos(ImVec2(40.0f, 410.0f));
+                ImGui::TextColored(color_Changes(color_status), "学生端状态: %s", program_status.c_str());
+                ImGui::SetCursorPos(ImVec2(40.0f, 430.0f));
+                ImGui::Text("%.1f FPS", io.Framerate);
+               // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
                 
 
-            ImGui::End();
+
+                if (isChecked == true) {
+                    SetForegroundWindow(hwnd);
+                    SetWindowPos(hwnd, HWND_TOP, 0, 0, 1280, 800, SWP_NOMOVE);
+                }
+
+
+            }ImGui::End();
         }
 
 
