@@ -1,6 +1,8 @@
 <h1 align="center">掌控课堂</h1>
 
-![alt text](image.png)
+![alt text](software1.png)
+![alt text](software2.png)
+![alt text](software3.png)
 
 
 ### 功能介绍
