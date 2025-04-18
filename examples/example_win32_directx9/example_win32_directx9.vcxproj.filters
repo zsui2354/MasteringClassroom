@@ -8,6 +8,9 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{a82cba23-9de0-45c2-b1e3-2eb1666702de}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{08adbbfb-cfc7-4ec3-b9aa-5b3ff3eaf33e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -90,6 +93,7 @@
     <ClInclude Include="stb_image.h">
       <Filter>sources</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.txt" />
@@ -99,5 +103,12 @@
     <None Include="..\..\misc\debuggers\imgui.natstepfilter">
       <Filter>imgui</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
+    <Image Include="icon3.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
 </Project>

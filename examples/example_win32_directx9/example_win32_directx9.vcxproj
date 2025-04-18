@@ -181,6 +181,7 @@
     <ClInclude Include="jellywidgets.h" />
     <ClInclude Include="lib_function.h" />
     <ClInclude Include="nav_elements.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="udp.h" />
@@ -189,6 +190,13 @@
     <None Include="..\..\misc\debuggers\imgui.natstepfilter" />
     <None Include="..\..\misc\debuggers\imgui.natvis" />
     <None Include="..\README.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon3.ico" />
+    <Image Include="icon1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1067,7 +1067,7 @@ static void ImGui_ImplWin32_CreateWindow(ImGuiViewport* viewport)
 
     HWND hwnd = reinterpret_cast<HWND>(viewport->PlatformHandleRaw);
     HRGN hRgn = CreateRoundRectRgn(22,22, 730, 460, 22, 22);     // 创建圆角区域
-    SetWindowRgn(hwnd, hRgn, TRUE);                             // 设置窗口的圆角
+    SetWindowRgn(hwnd, hRgn, TRUE);                              // 设置窗口的圆角
 }
 
 static void ImGui_ImplWin32_DestroyWindow(ImGuiViewport* viewport)
